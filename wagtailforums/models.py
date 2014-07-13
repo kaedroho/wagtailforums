@@ -16,7 +16,7 @@ class ForumReply(Page):
     )
 
     def get_replies(self):
-        return ForumReply.objects.child_of(self)
+        return ForumReply.objects.child_of(self).live()
 
     @classmethod
     def get_form_class(cls):
@@ -86,10 +86,10 @@ class ForumTopic(Page):
     )
 
     def get_replies(self):
-        return ForumReply.objects.child_of(self)
+        return ForumReply.objects.child_of(self).live()
 
     def get_all_replies(self):
-        return ForumReply.objects.descendant_of(self)
+        return ForumReply.objects.descendant_of(self).live()
 
     @classmethod
     def get_form_class(cls):
@@ -180,19 +180,19 @@ class ForumIndex(Page):
     in_forum_index = models.BooleanField(_("Show in forum index"), default=True)
 
     def get_forums(self):
-        return ForumIndex.objects.child_of(self)
+        return ForumIndex.objects.child_of(self).live()
 
     def get_all_forums(self):
-        return ForumIndex.objects.descendant_of(self)
+        return ForumIndex.objects.descendant_of(self).live()
 
     def get_topics(self):
-        return ForumTopic.objects.child_of(self)
+        return ForumTopic.objects.child_of(self).live()
 
     def get_all_topics(self):
-        return ForumTopic.objects.descendant_of(self)
+        return ForumTopic.objects.descendant_of(self).live()
 
     def get_all_replies(self):
-        return ForumReply.objects.descendant_of(self)
+        return ForumReply.objects.descendant_of(self).live()
 
     @property
     def search_url(self):
