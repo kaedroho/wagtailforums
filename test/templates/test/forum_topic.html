@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+  <h2>{{ self.title }}</h2>
+
+  {{ self.message }}
+
+  {% for reply in self.get_replies %}
+    {{ reply.message }}
+  {% endfor %}
+{% endblock %}
