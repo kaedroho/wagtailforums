@@ -11,6 +11,7 @@ Wagtail forums is a simple app which allows you to add a forum to your Wagtail p
 .. toctree::
    :maxdepth: 2
 
+   getting_started
 
 
 Indices and tables
