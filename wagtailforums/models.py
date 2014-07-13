@@ -31,6 +31,9 @@ class ForumTopic(Page):
     def get_replies(self):
         return ForumReply.objects.child_of(self)
 
+    def get_all_replies(self):
+        return ForumReply.objects.descendant_of(self)
+
 ForumTopic.content_panels = Page.content_panels + [
     FieldPanel('message', classname="full"),
 ]
@@ -46,8 +49,17 @@ class ForumIndex(Page):
     def get_forums(self):
         return ForumIndex.objects.child_of(self)
 
+    def get_all_forums(self):
+        return ForumIndex.objects.descendant_of(self)
+
     def get_topics(self):
         return ForumTopic.objects.child_of(self)
+
+    def get_all_topics(self):
+        return ForumTopic.objects.descendant_of(self)
+
+    def get_all_replies(self):
+        return ForumReply.objects.descendant_of(self)
 
 ForumIndex.promote_panels = Page.promote_panels + [
     FieldPanel('in_forum_index'),
