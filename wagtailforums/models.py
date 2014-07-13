@@ -91,6 +91,82 @@ class ForumTopic(Page):
     def get_all_replies(self):
         return ForumReply.objects.descendant_of(self)
 
+    @classmethod
+    def get_form_class(cls):
+        from wagtailforums.forms import ForumReplyForm
+        return ForumReplyForm
+
+    @property
+    def reply_url(self):
+        return self.url + 'reply/'
+
+    @property
+    def edit_url(self):
+        return self.url + 'edit/'
+
+    @property
+    def delete_url(self):
+        return self.url + 'delete/'
+
+    def route(self, request, path_components):
+        if self.live:
+            if path_components == ['reply']:
+                return RouteResult(self, kwargs=dict(action='reply'))
+
+            if path_components == ['edit']:
+                return RouteResult(self, kwargs=dict(action='edit'))
+
+            if path_components == ['delete']:
+                return RouteResult(self, kwargs=dict(action='delete'))
+
+        return super(ForumTopic, self).route(request, path_components)
+
+    def main_view(self, request):
+        form = ForumReply.get_form_class()(request.POST or None, request.FILES or None)
+
+        if form.is_valid():
+            page = form.save(commit=False)
+            self.add_child(instance=page)
+            page.save_revision(user=request.user)
+            page_published.send(sender=page.__class__, instance=page)
+            return redirect(self.url)
+        else:
+            context = self.get_context(request)
+            context['reply_form'] = form
+            return render(request, self.get_template(request), context)
+
+    def edit_view(self, request):
+        form = self.get_form_class()(request.POST or None, request.FILES or None, instance=self)
+
+        if form.is_valid():
+            form.save()
+            self.save_revision(user=request.user)
+            page_published.send(sender=self.__class__, instance=self)
+
+            return redirect(self.url)
+        else:
+            context = self.get_context(request)
+            context['form'] = form
+            return render(request, 'wagtailforums/forum_topic_edit.html', context)
+
+    def delete_view(self, request):
+        if request.method == 'POST':
+            self.live = False
+            self.save()
+            return redirect(self.get_parent().url)
+        else:
+            return render(request, 'wagtailforums/forum_topic_delete.html', self.get_context(request))
+
+    def serve(self, request, action='view'):
+        if action == 'view':
+            return self.main_view(request)
+
+        if action == 'edit':
+            return self.edit_view(request)
+
+        if action == 'delete':
+            return self.delete_view(request)
+
 ForumTopic.content_panels = Page.content_panels + [
     FieldPanel('message', classname="full"),
 ]
