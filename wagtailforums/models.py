@@ -44,7 +44,7 @@ class ForumIndex(Page):
     in_forum_index = models.BooleanField(_("Show in forum index"), default=True)
 
     def get_forums(self):
-        return ForumIndex.objects.child_of(self).live().public()
+        return ForumIndex.objects.child_of(self)
 
     def get_topics(self):
         return ForumTopic.objects.child_of(self)
