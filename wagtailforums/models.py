@@ -1,11 +1,12 @@
 from django.db import models
+from django.utils.translation import ugettext_lazy as _
 
 from wagtail.wagtailcore.models import Page
 from wagtail.wagtailadmin.edit_handlers import FieldPanel
 
 
 class ForumReply(Page):
-    message = models.TextField()
+    message = models.TextField(_("Message"))
 
     subpage_types = (
         'wagtailforums.ForumReply',
@@ -20,8 +21,8 @@ ForumReply.content_panels = Page.content_panels + [
 
 
 class ForumTopic(Page):
-    in_forum_index = models.BooleanField(default=True)
-    message = models.TextField()
+    in_forum_index = models.BooleanField(_("Show in forum index"), default=True)
+    message = models.TextField(_("Message"))
 
     # Default class to use for replies to this topic
     # Must be subclass of ``ForumReply``
@@ -44,7 +45,7 @@ ForumTopic.promote_panels = Page.promote_panels + [
 
 
 class ForumIndex(Page):
-    in_forum_index = models.BooleanField(default=True)
+    in_forum_index = models.BooleanField(_("Show in forum index"), default=True)
 
     # Default class to use for topics in this forum index
     # Must be subclass of ``ForumTopic``
