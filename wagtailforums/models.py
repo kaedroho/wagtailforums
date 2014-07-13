@@ -194,6 +194,36 @@ class ForumIndex(Page):
     def get_all_replies(self):
         return ForumReply.objects.descendant_of(self)
 
+    @property
+    def search_url(self):
+        return self.url + 'search/'
+
+    def route(self, request, path_components):
+        if self.live:
+            if path_components == ['search']:
+                return RouteResult(self, kwargs=dict(action='search'))
+
+        return super(ForumIndex, self).route(request, path_components)
+
+    def search_view(self, request):
+        if 'q' in request.GET:
+            query_string = request.GET['q']
+            search_results = Page.objects.live().descendant_of(self).search(query_string)
+        else:
+            query_string = None
+            search_results = Page.objects.none()
+
+        return render(request, 'wagtailforums/forum_index_search.html', {
+            'query_string': query_string,
+            'search_results': search_results,
+        })
+
+    def serve(self, request, action='view'):
+        if action == 'search':
+            return self.search_view(request)
+
+        return super(ForumIndex, self).serve(request)
+
 ForumIndex.promote_panels = Page.promote_panels + [
     FieldPanel('in_forum_index'),
 ]
