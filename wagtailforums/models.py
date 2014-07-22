@@ -95,6 +95,7 @@ class BaseForumReply(BaseForumPost):
 
 class BaseForumTopic(BaseForumPost):
     form_fields = ('message', )
+    reply_model = None
 
     @classmethod
     def get_form_class(cls):
@@ -179,6 +180,8 @@ class BaseForumTopic(BaseForumPost):
 
 
 class BaseForumIndex(Page):
+    topic_model = None
+
     @property
     def search_url(self):
         return self.url + 'search/'
