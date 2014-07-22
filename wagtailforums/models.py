@@ -182,6 +182,12 @@ class BaseForumTopic(BaseForumPost):
 class BaseForumIndex(Page):
     topic_model = None
 
+    def get_topics(self):
+        return self.topic_model.objects.child_of(self).live()
+
+    def get_all_topics(self):
+        return self.topic_model.objects.descendant_of(self).live()
+
     @property
     def search_url(self):
         return self.url + 'search/'
