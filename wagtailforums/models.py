@@ -1,6 +1,7 @@
 from django.db import models
 from django.shortcuts import render, redirect
 from django.conf import settings
+from django import forms
 
 from wagtail.wagtailcore.models import Page
 from wagtail.wagtailcore.signals import page_published
@@ -24,10 +25,18 @@ BaseForumPost.content_panels = Page.content_panels + [
 
 
 class BaseForumReply(BaseForumPost):
+    form_fields = ('message', )
+
     @classmethod
     def get_form_class(cls):
-        from wagtailforums.forms import ForumReplyForm
-        return ForumReplyForm
+        class form(forms.ModelForm):
+            class Meta:
+                model = cls
+                fields = cls.form_fields
+
+        form.__name__ = cls.__name__ + 'Form'
+
+        return form
 
     @property
     def edit_url(self):
@@ -85,10 +94,18 @@ class BaseForumReply(BaseForumPost):
 
 
 class BaseForumTopic(BaseForumPost):
+    form_fields = ('message', )
+
     @classmethod
     def get_form_class(cls):
-        from wagtailforums.forms import ForumReplyForm
-        return ForumReplyForm
+        class form(forms.ModelForm):
+            class Meta:
+                model = cls
+                fields = cls.form_fields
+
+        form.__name__ = cls.__name__ + 'Form'
+
+        return form
 
     @property
     def edit_url(self):
