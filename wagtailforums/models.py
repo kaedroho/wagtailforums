@@ -134,7 +134,7 @@ class BaseForumTopic(BaseForumPost):
         return super(BaseForumTopic, self).route(request, path_components)
 
     def main_view(self, request):
-        form = ForumReply.get_form_class()(request.POST or None, request.FILES or None)
+        form = self.reply_model.get_form_class()(request.POST or None, request.FILES or None)
 
         if form.is_valid():
             page = form.save(commit=False)
