@@ -1,6 +1,6 @@
 from django.db import models
 from django.shortcuts import render, redirect
-from django.utils.translation import ugettext_lazy as _
+from django.conf import settings
 
 from wagtail.wagtailcore.models import Page
 from wagtail.wagtailcore.signals import page_published
@@ -8,16 +8,22 @@ from wagtail.wagtailcore.url_routing import RouteResult
 from wagtail.wagtailadmin.edit_handlers import FieldPanel
 
 
-class ForumReply(Page):
-    message = models.TextField(_("Message"))
+class BaseForumPost(Page):
+    message = models.TextField()
+    posted_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, editable=False)
+    posted_at = models.DateTimeField(auto_now_add=True, editable=False)
 
-    subpage_types = (
-        'wagtailforums.ForumReply',
-    )
+    is_abstract = True
 
-    def get_replies(self):
-        return ForumReply.objects.child_of(self).live()
+    class Meta:
+        abstract = True
 
+BaseForumPost.content_panels = Page.content_panels + [
+    FieldPanel('message', classname="full"),
+]
+
+
+class BaseForumReply(BaseForumPost):
     @classmethod
     def get_form_class(cls):
         from wagtailforums.forms import ForumReplyForm
@@ -70,35 +76,19 @@ class ForumReply(Page):
         if action == 'delete':
             return self.delete_view(request)
 
-        return super(ForumReply, self).serve(request)
+        return super(BaseForumReply, self).serve(request)
 
-ForumReply.content_panels = Page.content_panels + [
-    FieldPanel('message', classname="full"),
-]
+    is_abstract = True
+
+    class Meta:
+        abstract = True
 
 
-class ForumTopic(Page):
-    in_forum_index = models.BooleanField(_("Show in forum index"), default=True)
-    message = models.TextField(_("Message"))
-
-    subpage_types = (
-        'wagtailforums.ForumReply',
-    )
-
-    def get_replies(self):
-        return ForumReply.objects.child_of(self).live()
-
-    def get_all_replies(self):
-        return ForumReply.objects.descendant_of(self).live()
-
+class BaseForumTopic(BaseForumPost):
     @classmethod
     def get_form_class(cls):
         from wagtailforums.forms import ForumReplyForm
         return ForumReplyForm
-
-    @property
-    def reply_url(self):
-        return self.url + 'reply/'
 
     @property
     def edit_url(self):
@@ -110,22 +100,20 @@ class ForumTopic(Page):
 
     def route(self, request, path_components):
         if self.live:
-            if path_components == ['reply']:
-                return RouteResult(self, kwargs=dict(action='reply'))
-
             if path_components == ['edit']:
                 return RouteResult(self, kwargs=dict(action='edit'))
 
             if path_components == ['delete']:
                 return RouteResult(self, kwargs=dict(action='delete'))
 
-        return super(ForumTopic, self).route(request, path_components)
+        return super(BaseForumTopic, self).route(request, path_components)
 
     def main_view(self, request):
         form = ForumReply.get_form_class()(request.POST or None, request.FILES or None)
 
         if form.is_valid():
             page = form.save(commit=False)
+            page.owner = page.posted_by = request.user
             self.add_child(instance=page)
             page.save_revision(user=request.user)
             page_published.send(sender=page.__class__, instance=page)
@@ -167,33 +155,13 @@ class ForumTopic(Page):
         if action == 'delete':
             return self.delete_view(request)
 
-ForumTopic.content_panels = Page.content_panels + [
-    FieldPanel('message', classname="full"),
-]
+    is_abstract = True
 
-ForumTopic.promote_panels = Page.promote_panels + [
-    FieldPanel('in_forum_index'),
-]
+    class Meta:
+        abstract = True
 
 
-class ForumIndex(Page):
-    in_forum_index = models.BooleanField(_("Show in forum index"), default=True)
-
-    def get_forums(self):
-        return ForumIndex.objects.child_of(self).live()
-
-    def get_all_forums(self):
-        return ForumIndex.objects.descendant_of(self).live()
-
-    def get_topics(self):
-        return ForumTopic.objects.child_of(self).live()
-
-    def get_all_topics(self):
-        return ForumTopic.objects.descendant_of(self).live()
-
-    def get_all_replies(self):
-        return ForumReply.objects.descendant_of(self).live()
-
+class BaseForumIndex(Page):
     @property
     def search_url(self):
         return self.url + 'search/'
@@ -203,7 +171,7 @@ class ForumIndex(Page):
             if path_components == ['search']:
                 return RouteResult(self, kwargs=dict(action='search'))
 
-        return super(ForumIndex, self).route(request, path_components)
+        return super(BaseForumIndex, self).route(request, path_components)
 
     def search_view(self, request):
         if 'q' in request.GET:
@@ -222,8 +190,9 @@ class ForumIndex(Page):
         if action == 'search':
             return self.search_view(request)
 
-        return super(ForumIndex, self).serve(request)
+        return super(BaseForumIndex, self).serve(request)
 
-ForumIndex.promote_panels = Page.promote_panels + [
-    FieldPanel('in_forum_index'),
-]
+    is_abstract = True
+
+    class Meta:
+        abstract = True

@@ -49,7 +49,6 @@ setup(
     ],
     install_requires=[
         'Django>=1.6.2,<1.7',
-        'South>=0.8.4',
         'wagtail==0.4',
     ],
     zip_safe=False,
