@@ -202,10 +202,10 @@ class BaseForumIndex(Page):
     def search_view(self, request):
         if 'q' in request.GET:
             query_string = request.GET['q']
-            search_results = Page.objects.live().descendant_of(self).search(query_string)
+            search_results = self.topic_model.objects.live().descendant_of(self).search(query_string)
         else:
             query_string = None
-            search_results = Page.objects.none()
+            search_results = self.topic_model.objects.none()
 
         return render(request, 'wagtailforums/forum_index_search.html', {
             'query_string': query_string,
