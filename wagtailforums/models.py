@@ -1,3 +1,5 @@
+import os
+
 from django.db import models
 from django.shortcuts import render, redirect
 from django.conf import settings
@@ -69,7 +71,7 @@ class BaseForumReply(BaseForumPost):
         else:
             context = self.get_context(request)
             context['form'] = form
-            return render(request, 'wagtailforums/forum_reply_edit.html', context)
+            return render(request, get_template_name(self.template, 'edit'), context)
 
     def delete_view(self, request):
         if request.method == 'POST':
@@ -77,7 +79,7 @@ class BaseForumReply(BaseForumPost):
             self.save()
             return redirect(self.get_parent().url)
         else:
-            return render(request, 'wagtailforums/forum_reply_delete.html', self.get_context(request))
+            return render(request, get_template_name(self.template, 'delete'), self.get_context(request))
 
     def serve(self, request, action='view'):
         if action == 'edit':
@@ -160,7 +162,7 @@ class BaseForumTopic(BaseForumPost):
         else:
             context = self.get_context(request)
             context['form'] = form
-            return render(request, 'wagtailforums/forum_topic_edit.html', context)
+            return render(request, get_template_name(self.template, 'edit'), context)
 
     def delete_view(self, request):
         if request.method == 'POST':
@@ -168,7 +170,7 @@ class BaseForumTopic(BaseForumPost):
             self.save()
             return redirect(self.get_parent().url)
         else:
-            return render(request, 'wagtailforums/forum_topic_delete.html', self.get_context(request))
+            return render(request, get_template_name(self.template, 'delete'), self.get_context(request))
 
     def serve(self, request, action='view'):
         if action == 'view':
@@ -226,7 +228,7 @@ class BaseForumIndex(Page):
             query_string = None
             search_results = self.topic_model.objects.none()
 
-        return render(request, 'wagtailforums/forum_index_search.html', {
+        return render(request, get_template_name(self.template, 'search'), {
             'query_string': query_string,
             'search_results': search_results,
         })
@@ -262,3 +264,8 @@ def get_topics():
 
 def get_indexes():
     return get_pages_of_type(BaseForumIndex)
+
+
+def get_template_name(main_template_name, view_name):
+    root, ext = os.path.splitext(main_template_name)
+    return root + '_' + view_name + ext
