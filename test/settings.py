@@ -74,9 +74,9 @@ INSTALLED_APPS = [
     'wagtail.wagtailforms',
     'wagtail.contrib.wagtailstyleguide',
     'wagtail.contrib.wagtailsitemaps',
-    'wagtail.tests',
 
     'wagtailforums',
+    'test',
 ]
 
 # Using DatabaseCache to make sure that the cache is cleared between tests.
