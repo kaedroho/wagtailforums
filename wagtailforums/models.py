@@ -1,6 +1,7 @@
 from django.db import models
 from django.shortcuts import render, redirect
 from django.conf import settings
+from django.contrib.contenttypes.models import ContentType
 from django import forms
 
 from wagtail.wagtailcore.models import Page
@@ -108,6 +109,12 @@ class BaseForumTopic(BaseForumPost):
 
         return form
 
+    def get_replies(self):
+        return get_replies().child_of(self).live()
+
+    def get_all_replies(self):
+        return get_replies().descendant_of(self).live()
+
     @property
     def edit_url(self):
         return self.url + 'edit/'
@@ -182,11 +189,23 @@ class BaseForumTopic(BaseForumPost):
 class BaseForumIndex(Page):
     topic_model = None
 
+    def get_indexes(self):
+        return get_indexes().child_of(self).live()
+
+    def get_all_indexes(self):
+        return get_indexes().descendant_of(self).live()
+
     def get_topics(self):
-        return self.topic_model.objects.child_of(self).live()
+        return get_topics().child_of(self).live()
 
     def get_all_topics(self):
-        return self.topic_model.objects.descendant_of(self).live()
+        return get_topics().descendant_of(self).live()
+
+    def get_replies(self):
+        return get_replies().child_of(self).live()
+
+    def get_all_replies(self):
+        return get_replies().descendant_of(self).live()
 
     @property
     def search_url(self):
@@ -222,3 +241,24 @@ class BaseForumIndex(Page):
 
     class Meta:
         abstract = True
+
+
+def get_pages_of_type(klass):
+    content_types = ContentType.objects.get_for_models(*[
+        model for model in models.get_models()
+        if issubclass(model, klass)
+    ]).values()
+
+    return Page.objects.filter(content_type__in=content_types)
+
+
+def get_replies():
+    return get_pages_of_type(BaseForumReply)
+
+
+def get_topics():
+    return get_pages_of_type(BaseForumTopic)
+
+
+def get_indexes():
+    return get_pages_of_type(BaseForumIndex)
