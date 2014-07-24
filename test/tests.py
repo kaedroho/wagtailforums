@@ -110,8 +110,8 @@ class TestForumTopic(TestCase, WagtailTestUtils):
 
         # Create a topic
         self.forum_topic = self.forum_index.add_child(instance=ForumTopic(
-            title="Forums",
-            slug='forums',
+            title="Topic",
+            slug='topic',
             live=True,
             owner=self.topic_owner,
         ))
@@ -149,7 +149,8 @@ class TestForumTopic(TestCase, WagtailTestUtils):
 
         # Check form
         self.assertIn('form', response.context)
-        self.assertEqual(len(response.context['form'].fields), 2)
+        self.assertEqual(len(response.context['form'].fields), 3)
+        self.assertIn('title', response.context['form'].fields)
         self.assertIn('message', response.context['form'].fields)
         self.assertIn('custom_field', response.context['form'].fields)
 
@@ -190,6 +191,7 @@ class TestForumTopic(TestCase, WagtailTestUtils):
         revision_count = self.forum_topic.revisions.count()
 
         response = self.client.post(self.forum_topic.edit_url, {
+            'title': "Topic",
             'message': "Hello",
             'custom_field': "World",
         })
@@ -208,6 +210,7 @@ class TestForumTopic(TestCase, WagtailTestUtils):
 
     def _test_post_edit_bad(self):
         response = self.client.post(self.forum_topic.edit_url, {
+            'title': "Topic",
             'message': "Hello",
             'custom_field': "World",
         })
@@ -293,9 +296,8 @@ class TestForumTopic(TestCase, WagtailTestUtils):
         # Response should redirect back to the forum index
         self.assertRedirects(response, self.forum_index.url)
 
-        # Check that the topic was unpublished
-        topic = ForumTopic.objects.get(id=self.forum_topic.id)
-        self.assertFalse(topic.live)
+        # Check that the topic was deleted
+        self.assertFalse(ForumTopic.objects.filter(id=self.forum_topic.id).exists())
 
     def _test_post_delete_bad(self):
         response = self.client.post(self.forum_topic.delete_url)
