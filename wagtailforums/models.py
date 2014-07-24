@@ -125,8 +125,7 @@ class BaseForumReply(BaseForumPost):
                 return redirect(self.url)
 
         if request.method == 'POST':
-            self.live = False
-            self.save()
+            self.delete()
             return redirect(self.get_parent().url)
         else:
             return render(request, get_template_name(self.template, 'delete'), self.get_context(request))
@@ -305,8 +304,7 @@ class BaseForumTopic(BaseForumPost):
                 return redirect(self.url)
 
         if request.method == 'POST':
-            self.live = False
-            self.save()
+            self.delete()
             return redirect(self.get_parent().url)
         else:
             return render(request, get_template_name(self.template, 'delete'), self.get_context(request))
