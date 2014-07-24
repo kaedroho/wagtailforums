@@ -263,13 +263,21 @@ class BaseForumTopic(BaseForumPost):
         form = self.reply_model.get_form_class()(request.POST or None, request.FILES or None)
 
         if form.is_valid():
+            publishing = self.user_can_publish_reply(request.user)
+
             page = form.save(commit=False)
             page.title = self.get_reply_title(page)
             page.slug = self.get_reply_slug(page)
             page.owner = page.posted_by = request.user
+            self.live = publishing
+            page.has_unpublished_changes = not page.live
+
             self.add_child(instance=page)
-            page.save_revision(user=request.user)
-            page_published.send(sender=page.__class__, instance=page)
+            page.save_revision(user=request.user, submitted_for_moderation=not publishing)
+
+            if publishing:
+                page_published.send(sender=page.__class__, instance=page)
+
             return redirect(self.url)
         else:
             context = self.get_context(request)
@@ -404,13 +412,22 @@ class BaseForumIndex(Page):
         form = self.topic_model.get_form_class()(request.POST or None, request.FILES or None)
 
         if form.is_valid():
+            publishing = self.user_can_publish_topic(request.user)
+
             page = form.save(commit=False)
             page.slug = self.get_topic_slug(page)
             page.owner = page.posted_by = request.user
+            page.live = publishing
+            page.has_unpublished_changes = not page.live
+
             self.add_child(instance=page)
-            page.save_revision(user=request.user)
-            page_published.send(sender=page.__class__, instance=page)
-            return redirect(page.url)
+            page.save_revision(user=request.user, submitted_for_moderation=not publishing)
+
+            if publishing:
+                page_published.send(sender=page.__class__, instance=page)
+                return redirect(page.url)
+            else:
+                return redirect(self.url)
         else:
             context = self.get_context(request)
             context['topic_form'] = form
