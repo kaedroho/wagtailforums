@@ -98,8 +98,8 @@ class TestForumTopic(TestCase, WagtailTestUtils):
         self.home_page = Page.objects.get(id=2)
 
         # Create a couple of test users
-        self.topic_owner = User.objects.create(username='topic_owner', password='hello123')
-        self.other_user = User.objects.create(username='other_user', password='hello123')
+        self.topic_owner = User.objects.create_user(username='topic_owner', password='hello123')
+        self.other_user = User.objects.create_user(username='other_user', password='hello123')
 
         # Create a forum index
         self.forum_index = self.home_page.add_child(instance=ForumIndex(
@@ -168,7 +168,8 @@ class TestForumTopic(TestCase, WagtailTestUtils):
 
     def test_get_edit_as_owner(self):
         # Login as the topic owner
-        self.user = self.client.login(username='topic_owner', password='hello123')
+        self.user = self.topic_owner
+        self.client.login(username='topic_owner', password='hello123')
 
         # Run tests for good result
         self._test_get_edit_good()
@@ -179,7 +180,8 @@ class TestForumTopic(TestCase, WagtailTestUtils):
 
     def test_get_edit_as_other_user(self):
         # Login as the other user
-        self.user = self.client.login(username='other_user', password='hello123')
+        self.user = self.other_user
+        self.client.login(username='other_user', password='hello123')
 
         # Run tests for bad result
         self._test_get_edit_bad()
@@ -227,7 +229,8 @@ class TestForumTopic(TestCase, WagtailTestUtils):
 
     def test_post_edit_as_owner(self):
         # Login as the topic owner
-        self.user = self.client.login(username='topic_owner', password='hello123')
+        self.user = self.topic_owner
+        self.client.login(username='topic_owner', password='hello123')
 
         # Run tests for good result
         self._test_post_edit_good()
@@ -238,7 +241,8 @@ class TestForumTopic(TestCase, WagtailTestUtils):
 
     def test_post_edit_as_other_user(self):
         # Login as the other user
-        self.user = self.client.login(username='other_user', password='hello123')
+        self.user = self.other_user
+        self.client.login(username='other_user', password='hello123')
 
         # Run tests for bad result
         self._test_post_edit_bad()
@@ -265,7 +269,8 @@ class TestForumTopic(TestCase, WagtailTestUtils):
 
     def test_get_delete_as_owner(self):
         # Login as the topic owner
-        self.user = self.client.login(username='topic_owner', password='hello123')
+        self.user = self.topic_owner
+        self.client.login(username='topic_owner', password='hello123')
 
         # Run tests for good result
         self._test_get_delete_good()
@@ -276,7 +281,8 @@ class TestForumTopic(TestCase, WagtailTestUtils):
 
     def test_get_delete_as_other_user(self):
         # Login as the other user
-        self.user = self.client.login(username='other_user', password='hello123')
+        self.user = self.other_user
+        self.client.login(username='other_user', password='hello123')
 
         # Run tests for bad result
         self._test_get_delete_bad()
@@ -310,7 +316,8 @@ class TestForumTopic(TestCase, WagtailTestUtils):
 
     def test_post_delete_as_owner(self):
         # Login as the topic owner
-        self.user = self.client.login(username='topic_owner', password='hello123')
+        self.user = self.topic_owner
+        self.client.login(username='topic_owner', password='hello123')
 
         # Run tests for good result
         self._test_post_delete_good()
@@ -321,7 +328,8 @@ class TestForumTopic(TestCase, WagtailTestUtils):
 
     def test_post_delete_as_other_user(self):
         # Login as the other user
-        self.user = self.client.login(username='other_user', password='hello123')
+        self.user = self.other_user
+        self.client.login(username='other_user', password='hello123')
 
         # Run tests for bad result
         self._test_post_delete_bad()
