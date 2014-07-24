@@ -5,6 +5,7 @@ from django.shortcuts import render, redirect
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
+from django.utils.text import slugify
 from django import forms
 
 from wagtail.wagtailcore.models import Page
@@ -146,7 +147,7 @@ class BaseForumReply(BaseForumPost):
 
 
 class BaseForumTopic(BaseForumPost):
-    form_fields = ('message', )
+    form_fields = ('title', 'message')
     reply_model = None
 
     @classmethod
@@ -368,6 +369,13 @@ class BaseForumIndex(Page):
 
         return True
 
+    def get_topic_slug(self, topic_page):
+        slug = slugify(topic_page.title[:40])
+
+        # TODO: Make this check that the slug is not already in use
+
+        return slug
+
     @property
     def search_url(self):
         return self.url + 'search/'
@@ -385,6 +393,22 @@ class BaseForumIndex(Page):
         context['user_can_publish_topic'] = self.user_can_publish_topic(request.user)
         return context
 
+    def main_view(self, request):
+        form = self.topic_model.get_form_class()(request.POST or None, request.FILES or None)
+
+        if form.is_valid():
+            page = form.save(commit=False)
+            page.slug = self.get_topic_slug(page)
+            page.owner = page.posted_by = request.user
+            self.add_child(instance=page)
+            page.save_revision(user=request.user)
+            page_published.send(sender=page.__class__, instance=page)
+            return redirect(page.url)
+        else:
+            context = self.get_context(request)
+            context['topic_form'] = form
+            return render(request, self.get_template(request), context)
+
     def search_view(self, request):
         if 'q' in request.GET:
             query_string = request.GET['q']
@@ -399,10 +423,11 @@ class BaseForumIndex(Page):
         })
 
     def serve(self, request, action='view'):
+        if action == 'view':
+            return self.main_view(request)
+
         if action == 'search':
             return self.search_view(request)
-
-        return super(BaseForumIndex, self).serve(request)
 
     is_abstract = True
 
