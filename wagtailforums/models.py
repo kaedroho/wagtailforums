@@ -227,6 +227,13 @@ class BaseForumTopic(BaseForumPost):
 
         return False
 
+    def get_reply_title(self, reply_page):
+        return "Reply to " + self.title
+
+    def get_reply_slug(self, reply_page):
+        # TODO: Make this return a slug
+        return ''
+
     @property
     def edit_url(self):
         return self.url + 'edit/'
@@ -258,6 +265,8 @@ class BaseForumTopic(BaseForumPost):
 
         if form.is_valid():
             page = form.save(commit=False)
+            page.title = self.get_reply_title(page)
+            page.slug = self.get_reply_slug(page)
             page.owner = page.posted_by = request.user
             self.add_child(instance=page)
             page.save_revision(user=request.user)
