@@ -10,7 +10,7 @@ With PyPI
 
 .. code-block:: shell
 
-    pip install wagtailforums
+    pip install wagtailforums==0.1a1
 
 
 From git
@@ -24,12 +24,12 @@ From git
 Configuration
 =============
 
-Simply add ``wagtailforums`` into your ``INSTALLED_APPS``. Anywhere after the ``wagtail.*`` imports will do.
+Add ``wagtailforums`` into your ``INSTALLED_APPS``.
 
 .. code-block:: python
 
     INSTALLED_APPS = [
         ...
 
-        'wagtailforms',
+        'wagtailforums',
     ]
