@@ -39,6 +39,12 @@ class BaseForumPost(Page):
     def get_all_posts(self):
         return get_posts().descendant_of(self).live()
 
+    def get_replies(self):
+        return get_replies().child_of(self).live()
+
+    def get_all_replies(self):
+        return get_replies().descendant_of(self).live()
+
     @property
     def edit_url(self):
         return self.url + 'edit/'
@@ -107,6 +113,12 @@ class BaseForumPost(Page):
 
         return False
 
+    def get_slug(self):
+        if self.title:
+            return slugify(self.title)
+        else:
+            return ''
+
     def route(self, request, path_components):
         if self.live:
             if path_components == ['edit']:
@@ -132,6 +144,7 @@ class BaseForumPost(Page):
             publishing = self.user_can_publish_reply(request.user)
 
             page = form.save(commit=False)
+            page.slug = page.get_slug()
             page.owner = page.posted_by = request.user
             self.live = publishing
             page.has_unpublished_changes = not page.live
@@ -209,6 +222,25 @@ BaseForumPost.content_panels = Page.content_panels + [
 ]
 
 
+class BaseForumReply(BaseForumPost):
+    def get_edit_redirect_url(self):
+        return self.get_parent().url
+
+    is_abstract = True
+
+    class Meta:
+        abstract = True
+
+
+class BaseForumTopic(BaseForumPost):
+    form_fields = ('title', 'message')
+
+    is_abstract = True
+
+    class Meta:
+        abstract = True
+
+
 class BaseForumIndex(Page):
     topic_model = None
 
@@ -223,6 +255,18 @@ class BaseForumIndex(Page):
 
     def get_all_posts(self):
         return get_posts().descendant_of(self).live()
+
+    def get_topics(self):
+        return get_topics().child_of(self).live()
+
+    def get_all_topics(self):
+        return get_topics().descendant_of(self).live()
+
+    def get_replies(self):
+        return get_replies().child_of(self).live()
+
+    def get_all_replies(self):
+        return get_replies().descendant_of(self).live()
 
     def user_can_post_topic(self, user):
         # If theres no topic model, no topics can be created
@@ -254,13 +298,6 @@ class BaseForumIndex(Page):
 
         return True
 
-    def get_topic_slug(self, topic_page):
-        slug = slugify(topic_page.title[:40])
-
-        # TODO: Make this check that the slug is not already in use
-
-        return slug
-
     @property
     def search_url(self):
         return self.url + 'search/'
@@ -285,7 +322,7 @@ class BaseForumIndex(Page):
             publishing = self.user_can_publish_topic(request.user)
 
             page = form.save(commit=False)
-            page.slug = self.get_topic_slug(page)
+            page.slug = page.get_slug()
             page.owner = page.posted_by = request.user
             page.live = publishing
             page.has_unpublished_changes = not page.live
@@ -341,6 +378,11 @@ def get_pages_of_type(klass):
 def get_posts():
     return get_pages_of_type(BaseForumPost)
 
+def get_replies():
+    return get_pages_of_type(BaseForumReply)
+
+def get_topics():
+    return get_pages_of_type(BaseForumTopic)
 
 def get_indexes():
     return get_pages_of_type(BaseForumIndex)

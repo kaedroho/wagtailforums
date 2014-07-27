@@ -4,7 +4,7 @@
 {% block content %}
   <h2>{{ self.title }}</h2>
 
-  {% for forum in self.get_subforums %}
+  {% for forum in self.get_indexes %}
     {{ forum }}
   {% endfor %}
 

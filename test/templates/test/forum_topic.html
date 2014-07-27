@@ -6,7 +6,7 @@
 
   {{ self.message }}
 
-  {% for reply in self.get_replies %}
+  {% for reply in self.get_posts %}
     {{ reply.message }}
   {% endfor %}
 {% endblock %}
