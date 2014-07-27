@@ -107,13 +107,6 @@ class BaseForumPost(Page):
 
         return False
 
-    def get_reply_title(self, reply_page):
-        return "Reply to " + self.title
-
-    def get_reply_slug(self, reply_page):
-        # TODO: Make this return a slug
-        return ''
-
     def route(self, request, path_components):
         if self.live:
             if path_components == ['edit']:
@@ -139,8 +132,6 @@ class BaseForumPost(Page):
             publishing = self.user_can_publish_reply(request.user)
 
             page = form.save(commit=False)
-            page.title = self.get_reply_title(page)
-            page.slug = self.get_reply_slug(page)
             page.owner = page.posted_by = request.user
             self.live = publishing
             page.has_unpublished_changes = not page.live
