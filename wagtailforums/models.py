@@ -19,134 +19,7 @@ class BaseForumPost(Page):
     posted_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, editable=False)
     posted_at = models.DateTimeField(auto_now_add=True, editable=False)
 
-    is_abstract = True
-
-    class Meta:
-        abstract = True
-
-BaseForumPost.content_panels = Page.content_panels + [
-    FieldPanel('message', classname="full"),
-]
-
-
-class BaseForumReply(BaseForumPost):
     form_fields = ('message', )
-
-    @classmethod
-    def get_form_class(cls):
-        class form(forms.ModelForm):
-            class Meta:
-                model = cls
-                fields = cls.form_fields
-
-        form.__name__ = cls.__name__ + 'Form'
-
-        return form
-
-    @property
-    def edit_url(self):
-        return self.url + 'edit/'
-
-    @property
-    def delete_url(self):
-        return self.url + 'delete/'
-
-    def user_can_edit(self, user):
-        # Check if the user has permission to do this in wagtail
-        if self.permissions_for_user(user).can_edit():
-            return True
-
-        # Make sure the user is active
-        if not user.is_active:
-            return False
-
-        # Owner can edit
-        if user == self.owner:
-            return True
-
-        return False
-
-    def user_can_delete(self, user):
-        # Check if the user has permission to do this in wagtail
-        if self.permissions_for_user(user).can_delete():
-            return True
-
-        # Make sure the user is active
-        if not user.is_active:
-            return False
-
-        # Owner can delete
-        if user == self.owner:
-            return True
-
-        return False
-
-    def route(self, request, path_components):
-        if self.live:
-            if path_components == ['edit']:
-                return RouteResult(self, kwargs=dict(action='edit'))
-
-            if path_components == ['delete']:
-                return RouteResult(self, kwargs=dict(action='delete'))
-
-        return super(ForumReply, self).route(request, path_components)
-
-    def get_context(self, request):
-        context = super(BaseForumReply, self).get_context(request)
-        context['user_can_edit'] = self.user_can_edit(request.user)
-        context['user_can_delete'] = self.user_can_delete(request.user)
-        return context
-
-    def edit_view(self, request):
-        if not self.user_can_edit(request.user):
-            if request.method == 'POST':
-                raise PermissionDenied
-            else:
-                return redirect(self.url)
-
-        form = self.get_form_class()(request.POST or None, request.FILES or None, instance=self)
-
-        if form.is_valid():
-            form.save()
-            self.save_revision(user=request.user)
-            page_published.send(sender=self.__class__, instance=self)
-
-            return redirect(self.get_parent().url)
-        else:
-            context = self.get_context(request)
-            context['form'] = form
-            return render(request, get_template_name(self.template, 'edit'), context)
-
-    def delete_view(self, request):
-        if not self.user_can_delete(request.user):
-            if request.method == 'POST':
-                raise PermissionDenied
-            else:
-                return redirect(self.url)
-
-        if request.method == 'POST':
-            self.delete()
-            return redirect(self.get_parent().url)
-        else:
-            return render(request, get_template_name(self.template, 'delete'), self.get_context(request))
-
-    def serve(self, request, action='view'):
-        if action == 'edit':
-            return self.edit_view(request)
-
-        if action == 'delete':
-            return self.delete_view(request)
-
-        return super(BaseForumReply, self).serve(request)
-
-    is_abstract = True
-
-    class Meta:
-        abstract = True
-
-
-class BaseForumTopic(BaseForumPost):
-    form_fields = ('title', 'message')
     reply_model = None
 
     @classmethod
@@ -160,11 +33,19 @@ class BaseForumTopic(BaseForumPost):
 
         return form
 
-    def get_replies(self):
-        return get_replies().child_of(self).live()
+    def get_posts(self):
+        return get_posts().child_of(self).live()
 
-    def get_all_replies(self):
-        return get_replies().descendant_of(self).live()
+    def get_all_posts(self):
+        return get_posts().descendant_of(self).live()
+
+    @property
+    def edit_url(self):
+        return self.url + 'edit/'
+
+    @property
+    def delete_url(self):
+        return self.url + 'delete/'
 
     def user_can_post_reply(self, user):
         # If theres no reply model, no replies can be created
@@ -233,14 +114,6 @@ class BaseForumTopic(BaseForumPost):
         # TODO: Make this return a slug
         return ''
 
-    @property
-    def edit_url(self):
-        return self.url + 'edit/'
-
-    @property
-    def delete_url(self):
-        return self.url + 'delete/'
-
     def route(self, request, path_components):
         if self.live:
             if path_components == ['edit']:
@@ -249,10 +122,10 @@ class BaseForumTopic(BaseForumPost):
             if path_components == ['delete']:
                 return RouteResult(self, kwargs=dict(action='delete'))
 
-        return super(BaseForumTopic, self).route(request, path_components)
+        return super(BaseForumPost, self).route(request, path_components)
 
     def get_context(self, request):
-        context = super(BaseForumTopic, self).get_context(request)
+        context = super(BaseForumPost, self).get_context(request)
         context['user_can_post_reply'] = self.user_can_post_reply(request.user)
         context['user_can_publish_reply'] = self.user_can_publish_reply(request.user)
         context['user_can_edit'] = self.user_can_edit(request.user)
@@ -284,6 +157,9 @@ class BaseForumTopic(BaseForumPost):
             context['reply_form'] = form
             return render(request, self.get_template(request), context)
 
+    def get_edit_redirect_url(self):
+        return self.url
+
     def edit_view(self, request):
         if not self.user_can_edit(request.user):
             if request.method == 'POST':
@@ -298,11 +174,14 @@ class BaseForumTopic(BaseForumPost):
             self.save_revision(user=request.user)
             page_published.send(sender=self.__class__, instance=self)
 
-            return redirect(self.url)
+            return redirect(self.get_edit_redirect_url())
         else:
             context = self.get_context(request)
             context['form'] = form
             return render(request, get_template_name(self.template, 'edit'), context)
+
+    def get_delete_redirect_url(self):
+        return self.get_parent().url
 
     def delete_view(self, request):
         if not self.user_can_delete(request.user):
@@ -313,7 +192,7 @@ class BaseForumTopic(BaseForumPost):
 
         if request.method == 'POST':
             self.delete()
-            return redirect(self.get_parent().url)
+            return redirect(self.get_delete_redirect_url())
         else:
             return render(request, get_template_name(self.template, 'delete'), self.get_context(request))
 
@@ -327,10 +206,16 @@ class BaseForumTopic(BaseForumPost):
         if action == 'delete':
             return self.delete_view(request)
 
+        return super(BaseForumPost, self).serve(request)
+
     is_abstract = True
 
     class Meta:
         abstract = True
+
+BaseForumPost.content_panels = Page.content_panels + [
+    FieldPanel('message', classname="full"),
+]
 
 
 class BaseForumIndex(Page):
@@ -342,17 +227,11 @@ class BaseForumIndex(Page):
     def get_all_indexes(self):
         return get_indexes().descendant_of(self).live()
 
-    def get_topics(self):
-        return get_topics().child_of(self).live()
+    def get_posts(self):
+        return get_posts().child_of(self).live()
 
-    def get_all_topics(self):
-        return get_topics().descendant_of(self).live()
-
-    def get_replies(self):
-        return get_replies().child_of(self).live()
-
-    def get_all_replies(self):
-        return get_replies().descendant_of(self).live()
+    def get_all_posts(self):
+        return get_posts().descendant_of(self).live()
 
     def user_can_post_topic(self, user):
         # If theres no topic model, no topics can be created
@@ -468,12 +347,8 @@ def get_pages_of_type(klass):
     return Page.objects.filter(content_type__in=content_types)
 
 
-def get_replies():
-    return get_pages_of_type(BaseForumReply)
-
-
-def get_topics():
-    return get_pages_of_type(BaseForumTopic)
+def get_posts():
+    return get_pages_of_type(BaseForumPost)
 
 
 def get_indexes():
