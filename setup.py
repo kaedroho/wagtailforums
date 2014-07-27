@@ -2,6 +2,7 @@
 
 import sys
 
+from wagtailforums import __version__
 
 try:
     from setuptools import setup
@@ -21,7 +22,7 @@ except ImportError:
 
 setup(
     name='wagtailforums',
-    version='0.1',
+    version=__version__,
     description='A simple forum system for Wagtail CMS',
     author='Karl Hobley',
     author_email='karlhobley10@gmail.com',
