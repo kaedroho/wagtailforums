@@ -17,12 +17,6 @@ from wagtail.wagtailadmin.edit_handlers import FieldPanel
 class ForumPageMixin(models.Model):
     post_model = None
 
-    def get_posts(self):
-        return get_posts().child_of(self).live()
-
-    def get_all_posts(self):
-        return get_posts().descendant_of(self).live()
-
     def user_can_create_post(self, user):
         # If theres no post model, no posts can be created
         if not self.post_model:
@@ -106,12 +100,6 @@ class BaseForumPost(Page, ForumPageMixin):
         form.__name__ = cls.__name__ + 'Form'
 
         return form
-
-    def get_replies(self):
-        return get_replies().child_of(self).live()
-
-    def get_all_replies(self):
-        return get_replies().descendant_of(self).live()
 
     @property
     def edit_url(self):
@@ -274,24 +262,6 @@ class BaseForumTopic(BaseForumPost):
 
 
 class BaseForumIndex(Page, ForumPageMixin):
-    def get_indexes(self):
-        return get_indexes().child_of(self).live()
-
-    def get_all_indexes(self):
-        return get_indexes().descendant_of(self).live()
-
-    def get_topics(self):
-        return get_topics().child_of(self).live()
-
-    def get_all_topics(self):
-        return get_topics().descendant_of(self).live()
-
-    def get_replies(self):
-        return get_replies().child_of(self).live()
-
-    def get_all_replies(self):
-        return get_replies().descendant_of(self).live()
-
     @property
     def search_url(self):
         return self.url + 'search/'
@@ -327,28 +297,6 @@ class BaseForumIndex(Page, ForumPageMixin):
 
     class Meta:
         abstract = True
-
-
-def get_pages_of_type(klass):
-    content_types = ContentType.objects.get_for_models(*[
-        model for model in models.get_models()
-        if issubclass(model, klass)
-    ]).values()
-
-    return Page.objects.filter(content_type__in=content_types)
-
-
-def get_posts():
-    return get_pages_of_type(BaseForumPost)
-
-def get_replies():
-    return get_pages_of_type(BaseForumReply)
-
-def get_topics():
-    return get_pages_of_type(BaseForumTopic)
-
-def get_indexes():
-    return get_pages_of_type(BaseForumIndex)
 
 
 def get_template_name(main_template_name, view_name):

@@ -52,32 +52,6 @@ class TestForumIndex(TestCase):
             for i in range(10)
         ]
 
-    def test_get_topics(self):
-        # Get topics
-        topics = self.forum_index.get_topics()
-
-        # Check that topics for this page are included
-        self.assertIn(self.forum_topics[0].page_ptr, topics)
-
-        # Check that the unpublished topic was not included
-        self.assertNotIn(self.unpublished_topic.page_ptr, topics)
-
-        # Check that no topics from the sub forum were included
-        self.assertNotIn(self.sub_forum_topics[0].page_ptr, topics)
-
-    def test_get_all_topics(self):
-        # Get topics
-        topics = self.forum_index.get_all_topics()
-
-        # Check that topics for this page are included
-        self.assertIn(self.forum_topics[0].page_ptr, topics)
-
-        # Check that the unpublished topic was not included
-        self.assertNotIn(self.unpublished_topic.page_ptr, topics)
-
-        # Check that topics from the sub forum were included
-        self.assertIn(self.sub_forum_topics[0].page_ptr, topics)
-
     def test_get_main(self):
         response = self.client.get(self.forum_index.url)
 
