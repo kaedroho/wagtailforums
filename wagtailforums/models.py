@@ -16,6 +16,7 @@ from wagtail.wagtailadmin.edit_handlers import FieldPanel
 
 class BaseForumPost(Page):
     message = models.TextField()
+    post_number = models.PositiveIntegerField(editable=False)
 
     form_fields = ('message', )
     reply_model = None
@@ -130,9 +131,17 @@ class BaseForumPost(Page):
 
     def get_slug(self):
         if self.title:
-            return slugify(self.title)
+            return str(self.post_number) + '-' + slugify(self.title)
         else:
-            return ''
+            return str(self.post_number)
+
+    def get_title(self):
+        return "Reply #" + str(self.post_number) + " by " + self.owner.username
+
+    def get_next_post_number(self):
+        children = self.reply_model.objects.child_of(self)
+
+        return (children.aggregate(models.Max('post_number'))['post_number__max'] or 0) + 1
 
     def route(self, request, path_components):
         if self.live:
@@ -159,8 +168,11 @@ class BaseForumPost(Page):
             publishing = self.user_can_publish_reply(request.user)
 
             page = form.save(commit=False)
+            page.post_number = self.get_next_post_number()
             page.slug = page.get_slug()
             page.owner  = request.user
+            if not page.title:
+                page.title = page.get_title()
             self.live = publishing
             page.has_unpublished_changes = not page.live
 
@@ -317,6 +329,11 @@ class BaseForumIndex(Page):
     def search_url(self):
         return self.url + 'search/'
 
+    def get_next_post_number(self):
+        children = self.topic_model.objects.child_of(self)
+
+        return (children.aggregate(models.Max('post_number'))['post_number__max'] or 0) + 1
+
     def route(self, request, path_components):
         if self.live:
             if path_components == ['search']:
@@ -337,6 +354,7 @@ class BaseForumIndex(Page):
             publishing = self.user_can_publish_topic(request.user)
 
             page = form.save(commit=False)
+            page.post_number = self.get_next_post_number()
             page.slug = page.get_slug()
             page.owner = request.user
             page.live = publishing
