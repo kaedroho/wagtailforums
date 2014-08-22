@@ -14,12 +14,87 @@ from wagtail.wagtailcore.url_routing import RouteResult
 from wagtail.wagtailadmin.edit_handlers import FieldPanel
 
 
-class BaseForumPost(Page):
+class ForumPageMixin(models.Model):
+    post_model = None
+
+    def get_posts(self):
+        return get_posts().child_of(self).live()
+
+    def get_all_posts(self):
+        return get_posts().descendant_of(self).live()
+
+    def user_can_create_post(self, user):
+        # If theres no post model, no posts can be created
+        if not self.post_model:
+            return False
+
+        # Make sure the user is active
+        if not user.is_active:
+            return False
+
+        # Check if the user has permission to do this in wagtail
+        if self.permissions_for_user(user).can_add_subpage():
+            return True
+
+        return True
+
+    def user_can_publish_post(self, user):
+        # Users need to be able to create posts before they can publish them
+        if not self.user_can_create_post(user):
+            return False
+
+        # Check if the user has permission to do this in wagtail
+        if self.permissions_for_user(user).can_publish_subpage():
+            return True
+
+        return True
+
+    def get_next_post_number(self):
+        children = self.post_model.objects.child_of(self)
+
+        return (children.aggregate(models.Max('post_number'))['post_number__max'] or 0) + 1
+
+    def get_create_post_redirect_url(self, post):
+        return post.url
+
+    def main_view(self, request):
+        form = self.post_model.get_form_class()(request.POST or None, request.FILES or None)
+
+        if form.is_valid():
+            publishing = self.user_can_publish_post(request.user)
+
+            page = form.save(commit=False)
+            page.post_number = self.get_next_post_number()
+            page.slug = page.get_slug()
+            page.owner  = request.user
+            if not page.title:
+                page.title = str(page.post_number)
+            self.live = publishing
+            page.has_unpublished_changes = not page.live
+
+            self.add_child(instance=page)
+            page.save_revision(user=request.user, submitted_for_moderation=not publishing)
+
+            if publishing:
+                page_published.send(sender=page.__class__, instance=page)
+
+            return redirect(self.get_create_post_redirect_url(page))
+        else:
+            context = self.get_context(request)
+            context['post_form'] = form
+            context['user_can_create_post'] = self.user_can_create_post(request.user)
+            context['user_can_publish_post'] = self.user_can_publish_post(request.user)
+            return render(request, self.get_template(request), context)
+
+    class Meta:
+        abstract = True
+
+
+class BaseForumPost(Page, ForumPageMixin):
     message = models.TextField()
     post_number = models.PositiveIntegerField(editable=False, null=True)
 
     form_fields = ('message', )
-    reply_model = None
 
     @classmethod
     def get_form_class(cls):
@@ -31,12 +106,6 @@ class BaseForumPost(Page):
         form.__name__ = cls.__name__ + 'Form'
 
         return form
-
-    def get_posts(self):
-        return get_posts().child_of(self).live()
-
-    def get_all_posts(self):
-        return get_posts().descendant_of(self).live()
 
     def get_replies(self):
         return get_replies().child_of(self).live()
@@ -51,36 +120,6 @@ class BaseForumPost(Page):
     @property
     def delete_url(self):
         return self.url + 'delete/'
-
-    def user_can_post_reply(self, user):
-        # If theres no reply model, no replies can be created
-        if not self.reply_model:
-            return False
-
-        # Check if the user has permission to do this in wagtail
-        if self.permissions_for_user(user).can_add_subpage():
-            return True
-
-        # Make sure the user is active
-        if not user.is_active:
-            return False
-
-        return True
-
-    def user_can_publish_reply(self, user):
-        # Users need to be able to post replies before they can publish them
-        if not self.user_can_post_reply(user):
-            return False
-
-        # Check if the user has permission to do this in wagtail
-        if self.permissions_for_user(user).can_publish_subpage():
-            return True
-
-        # Make sure the user is active
-        if not user.is_active:
-            return False
-
-        return True
 
     def user_can_edit(self, user):
         # Check if the user has permission to do this in wagtail
@@ -135,14 +174,6 @@ class BaseForumPost(Page):
         else:
             return str(self.post_number)
 
-    def get_title(self):
-        return "Reply #" + str(self.post_number) + " by " + self.owner.username
-
-    def get_next_post_number(self):
-        children = self.reply_model.objects.child_of(self)
-
-        return (children.aggregate(models.Max('post_number'))['post_number__max'] or 0) + 1
-
     def route(self, request, path_components):
         if self.live:
             if path_components == ['edit']:
@@ -155,38 +186,9 @@ class BaseForumPost(Page):
 
     def get_context(self, request):
         context = super(BaseForumPost, self).get_context(request)
-        context['user_can_post_reply'] = self.user_can_post_reply(request.user)
-        context['user_can_publish_reply'] = self.user_can_publish_reply(request.user)
         context['user_can_edit'] = self.user_can_edit(request.user)
         context['user_can_delete'] = self.user_can_delete(request.user)
         return context
-
-    def main_view(self, request):
-        form = self.reply_model.get_form_class()(request.POST or None, request.FILES or None)
-
-        if form.is_valid():
-            publishing = self.user_can_publish_reply(request.user)
-
-            page = form.save(commit=False)
-            page.post_number = self.get_next_post_number()
-            page.slug = page.get_slug()
-            page.owner  = request.user
-            if not page.title:
-                page.title = page.get_title()
-            self.live = publishing
-            page.has_unpublished_changes = not page.live
-
-            self.add_child(instance=page)
-            page.save_revision(user=request.user, submitted_for_moderation=not publishing)
-
-            if publishing:
-                page_published.send(sender=page.__class__, instance=page)
-
-            return redirect(self.url)
-        else:
-            context = self.get_context(request)
-            context['reply_form'] = form
-            return render(request, self.get_template(request), context)
 
     def get_edit_redirect_url(self):
         return self.url
@@ -262,26 +264,21 @@ class BaseForumReply(BaseForumPost):
 class BaseForumTopic(BaseForumPost):
     form_fields = ('title', 'message')
 
+    def get_create_post_redirect_url(self, post):
+        return self.url
+
     is_abstract = True
 
     class Meta:
         abstract = True
 
 
-class BaseForumIndex(Page):
-    topic_model = None
-
+class BaseForumIndex(Page, ForumPageMixin):
     def get_indexes(self):
         return get_indexes().child_of(self).live()
 
     def get_all_indexes(self):
         return get_indexes().descendant_of(self).live()
-
-    def get_posts(self):
-        return get_posts().child_of(self).live()
-
-    def get_all_posts(self):
-        return get_posts().descendant_of(self).live()
 
     def get_topics(self):
         return get_topics().child_of(self).live()
@@ -295,44 +292,9 @@ class BaseForumIndex(Page):
     def get_all_replies(self):
         return get_replies().descendant_of(self).live()
 
-    def user_can_post_topic(self, user):
-        # If theres no topic model, no topics can be created
-        if not self.topic_model:
-            return False
-
-        # Check if the user has permission to do this in wagtail
-        if self.permissions_for_user(user).can_add_subpage():
-            return True
-
-        # Make sure the user is active
-        if not user.is_active:
-            return False
-
-        return True
-
-    def user_can_publish_topic(self, user):
-        # Users need to be able to post topics before they can publish them
-        if not self.user_can_post_topic(user):
-            return False
-
-        # Check if the user has permission to do this in wagtail
-        if self.permissions_for_user(user).can_publish_subpage():
-            return True
-
-        # Make sure the user is active
-        if not user.is_active:
-            return False
-
-        return True
-
     @property
     def search_url(self):
         return self.url + 'search/'
-
-    def get_next_post_number(self):
-        children = self.topic_model.objects.child_of(self)
-
-        return (children.aggregate(models.Max('post_number'))['post_number__max'] or 0) + 1
 
     def route(self, request, path_components):
         if self.live:
@@ -341,45 +303,13 @@ class BaseForumIndex(Page):
 
         return super(BaseForumIndex, self).route(request, path_components)
 
-    def get_context(self, request):
-        context = super(BaseForumIndex, self).get_context(request)
-        context['user_can_post_topic'] = self.user_can_post_topic(request.user)
-        context['user_can_publish_topic'] = self.user_can_publish_topic(request.user)
-        return context
-
-    def main_view(self, request):
-        form = self.topic_model.get_form_class()(request.POST or None, request.FILES or None)
-
-        if form.is_valid():
-            publishing = self.user_can_publish_topic(request.user)
-
-            page = form.save(commit=False)
-            page.post_number = self.get_next_post_number()
-            page.slug = page.get_slug()
-            page.owner = request.user
-            page.live = publishing
-            page.has_unpublished_changes = not page.live
-
-            self.add_child(instance=page)
-            page.save_revision(user=request.user, submitted_for_moderation=not publishing)
-
-            if publishing:
-                page_published.send(sender=page.__class__, instance=page)
-                return redirect(page.url)
-            else:
-                return redirect(self.url)
-        else:
-            context = self.get_context(request)
-            context['topic_form'] = form
-            return render(request, self.get_template(request), context)
-
     def search_view(self, request):
         if 'q' in request.GET:
             query_string = request.GET['q']
-            search_results = self.topic_model.objects.live().descendant_of(self).search(query_string)
+            search_results = self.post_model.objects.live().descendant_of(self).search(query_string)
         else:
             query_string = None
-            search_results = self.topic_model.objects.none()
+            search_results = self.post_model.objects.none()
 
         return render(request, get_template_name(self.template, 'search'), {
             'query_string': query_string,
