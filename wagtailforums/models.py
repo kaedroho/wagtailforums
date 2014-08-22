@@ -111,6 +111,23 @@ class BaseForumPost(Page):
 
         return False
 
+    def get_earliest_revision(self):
+        return self.revisions.order_by('-created_at').last()
+
+    # get_latest_revision is implemented in wagtailcore.Page
+
+    def get_posted_at(self):
+        return self.get_earliest_revision().created_at
+
+    def get_posted_by(self):
+        return self.get_earliest_revision().user
+
+    def get_edited_at(self):
+        return self.get_latest_revision().created_at
+
+    def get_edited_by(self):
+        return self.get_latest_revision().user
+
     def get_slug(self):
         if self.title:
             return slugify(self.title)
