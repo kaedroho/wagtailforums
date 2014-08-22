@@ -16,7 +16,7 @@ from wagtail.wagtailadmin.edit_handlers import FieldPanel
 
 class BaseForumPost(Page):
     message = models.TextField()
-    post_number = models.PositiveIntegerField(editable=False)
+    post_number = models.PositiveIntegerField(editable=False, null=True)
 
     form_fields = ('message', )
     reply_model = None
