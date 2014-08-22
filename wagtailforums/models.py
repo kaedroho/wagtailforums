@@ -9,7 +9,6 @@ from django.utils.text import slugify
 from django import forms
 
 from wagtail.wagtailcore.models import Page
-from wagtail.wagtailcore.signals import page_published
 from wagtail.wagtailcore.url_routing import RouteResult
 from wagtail.wagtailadmin.edit_handlers import FieldPanel
 
@@ -58,19 +57,19 @@ class ForumPageMixin(models.Model):
             publishing = self.user_can_publish_post(request.user)
 
             page = form.save(commit=False)
+            page.owner  = request.user
             page.post_number = self.get_next_post_number()
             page.slug = page.get_slug()
-            page.owner  = request.user
             if not page.title:
                 page.title = str(page.post_number)
-            self.live = publishing
-            page.has_unpublished_changes = not page.live
+            page.live = False
+            page.has_unpublished_changes = True
 
             self.add_child(instance=page)
-            page.save_revision(user=request.user, submitted_for_moderation=not publishing)
+            revision = page.save_revision(user=request.user, submitted_for_moderation=not publishing)
 
             if publishing:
-                page_published.send(sender=page.__class__, instance=page)
+                revision.publish()
 
             return redirect(self.get_create_post_redirect_url(page))
         else:
@@ -191,9 +190,8 @@ class BaseForumPost(Page, ForumPageMixin):
         form = self.get_form_class()(request.POST or None, request.FILES or None, instance=self)
 
         if form.is_valid():
-            form.save()
-            self.save_revision(user=request.user)
-            page_published.send(sender=self.__class__, instance=self)
+            form.save(commit=False)
+            self.save_revision(user=request.user).publish()
 
             return redirect(self.get_edit_redirect_url())
         else:
