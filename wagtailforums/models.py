@@ -16,8 +16,6 @@ from wagtail.wagtailadmin.edit_handlers import FieldPanel
 
 class BaseForumPost(Page):
     message = models.TextField()
-    posted_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, editable=False)
-    posted_at = models.DateTimeField(auto_now_add=True, editable=False)
 
     form_fields = ('message', )
     reply_model = None
@@ -145,7 +143,7 @@ class BaseForumPost(Page):
 
             page = form.save(commit=False)
             page.slug = page.get_slug()
-            page.owner = page.posted_by = request.user
+            page.owner  = request.user
             self.live = publishing
             page.has_unpublished_changes = not page.live
 
@@ -323,7 +321,7 @@ class BaseForumIndex(Page):
 
             page = form.save(commit=False)
             page.slug = page.get_slug()
-            page.owner = page.posted_by = request.user
+            page.owner = request.user
             page.live = publishing
             page.has_unpublished_changes = not page.live
 
