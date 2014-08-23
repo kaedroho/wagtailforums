@@ -16,6 +16,10 @@ from wagtail.wagtailadmin.edit_handlers import FieldPanel
 class ForumPageMixin(models.Model):
     post_model = None
 
+    @property
+    def new_post_url(self):
+        return self.url + 'new_post/'
+
     def user_can_create_post(self, user):
         # If theres no post model, no posts can be created
         if not self.post_model:
@@ -50,7 +54,10 @@ class ForumPageMixin(models.Model):
     def get_create_post_redirect_url(self, post):
         return post.url
 
-    def main_view(self, request):
+    def new_post_view(self, request):
+        if not self.user_can_create_post(request.user):
+            raise PermissionDenied
+
         form = self.post_model.get_form_class()(request.POST or None, request.FILES or None)
 
         if form.is_valid():
@@ -75,9 +82,18 @@ class ForumPageMixin(models.Model):
         else:
             context = self.get_context(request)
             context['post_form'] = form
-            context['user_can_create_post'] = self.user_can_create_post(request.user)
             context['user_can_publish_post'] = self.user_can_publish_post(request.user)
-            return render(request, self.get_template(request), context)
+            return render(request, get_template_name(self.template, 'new_post'), context)
+
+
+    def main_view(self, request):
+        form = self.post_model.get_form_class()(request.POST or None, request.FILES or None)
+
+        context = self.get_context(request)
+        context['post_form'] = form
+        context['user_can_create_post'] = self.user_can_create_post(request.user)
+        context['user_can_publish_post'] = self.user_can_publish_post(request.user)
+        return render(request, self.get_template(request), context)
 
     class Meta:
         abstract = True
@@ -163,6 +179,9 @@ class BaseForumPost(Page, ForumPageMixin):
 
     def route(self, request, path_components):
         if self.live:
+            if path_components == ['new_post']:
+                return RouteResult(self, kwargs=dict(action='new_post'))
+
             if path_components == ['edit']:
                 return RouteResult(self, kwargs=dict(action='edit'))
 
@@ -219,6 +238,9 @@ class BaseForumPost(Page, ForumPageMixin):
         if action == 'view':
             return self.main_view(request)
 
+        if action == 'new_post':
+            return self.new_post_view(request)
+
         if action == 'edit':
             return self.edit_view(request)
 
@@ -266,6 +288,9 @@ class BaseForumIndex(Page, ForumPageMixin):
 
     def route(self, request, path_components):
         if self.live:
+            if path_components == ['new_post']:
+                return RouteResult(self, kwargs=dict(action='new_post'))
+
             if path_components == ['search']:
                 return RouteResult(self, kwargs=dict(action='search'))
 
@@ -287,6 +312,9 @@ class BaseForumIndex(Page, ForumPageMixin):
     def serve(self, request, action='view'):
         if action == 'view':
             return self.main_view(request)
+
+        if action == 'new_post':
+            return self.new_post_view(request)
 
         if action == 'search':
             return self.search_view(request)
