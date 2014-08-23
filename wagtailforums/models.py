@@ -85,7 +85,6 @@ class ForumPageMixin(models.Model):
             context['user_can_publish_post'] = self.user_can_publish_post(request.user)
             return render(request, get_template_name(self.template, 'new_post'), context)
 
-
     def main_view(self, request):
         form = self.post_model.get_form_class()(request.POST or None, request.FILES or None)
 
