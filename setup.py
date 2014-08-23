@@ -50,7 +50,7 @@ setup(
     ],
     install_requires=[
         'Django>=1.6.2,<1.7',
-        'wagtail==0.4',
+        'wagtail>=0.4,<0.6',
     ],
     zip_safe=False,
 )
