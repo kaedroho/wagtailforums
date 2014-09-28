@@ -1,20 +1,20 @@
 from django.db import models
 
-from wagtailforums.models import BaseForumIndex, BaseForumTopic, BaseForumReply
+from wagtailforums.models import AbstractForumIndex, AbstractForumTopic, AbstractForumReply
 
 
-class ForumReply(BaseForumReply):
+class ForumReply(AbstractForumReply):
     pass
 
 
-class ForumTopic(BaseForumTopic):
+class ForumTopic(AbstractForumTopic):
     custom_field = models.TextField()
 
     post_model = ForumReply
-    form_fields = BaseForumTopic.form_fields + (
+    form_fields = AbstractForumTopic.form_fields + (
         'custom_field',
     )
 
 
-class ForumIndex(BaseForumIndex):
+class ForumIndex(AbstractForumIndex):
     post_model = ForumTopic

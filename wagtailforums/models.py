@@ -98,7 +98,7 @@ class ForumPageMixin(models.Model):
         abstract = True
 
 
-class BaseForumPost(Page, ForumPageMixin):
+class AbstractForumPost(Page, ForumPageMixin):
     message = models.TextField()
     post_number = models.PositiveIntegerField(editable=False, null=True)
 
@@ -187,10 +187,10 @@ class BaseForumPost(Page, ForumPageMixin):
             if path_components == ['delete']:
                 return RouteResult(self, kwargs=dict(action='delete'))
 
-        return super(BaseForumPost, self).route(request, path_components)
+        return super(AbstractForumPost, self).route(request, path_components)
 
     def get_context(self, request):
-        context = super(BaseForumPost, self).get_context(request)
+        context = super(AbstractForumPost, self).get_context(request)
         context['user_can_edit'] = self.user_can_edit(request.user)
         context['user_can_delete'] = self.user_can_delete(request.user)
         return context
@@ -246,19 +246,19 @@ class BaseForumPost(Page, ForumPageMixin):
         if action == 'delete':
             return self.delete_view(request)
 
-        return super(BaseForumPost, self).serve(request)
+        return super(AbstractForumPost, self).serve(request)
 
     is_abstract = True
 
     class Meta:
         abstract = True
 
-BaseForumPost.content_panels = Page.content_panels + [
+AbstractForumPost.content_panels = Page.content_panels + [
     FieldPanel('message', classname="full"),
 ]
 
 
-class BaseForumReply(BaseForumPost):
+class AbstractForumReply(AbstractForumPost):
     def get_edit_redirect_url(self):
         return self.get_parent().url
 
@@ -268,7 +268,7 @@ class BaseForumReply(BaseForumPost):
         abstract = True
 
 
-class BaseForumTopic(BaseForumPost):
+class AbstractForumTopic(AbstractForumPost):
     form_fields = ('title', 'message')
 
     def get_create_post_redirect_url(self, post):
@@ -280,7 +280,7 @@ class BaseForumTopic(BaseForumPost):
         abstract = True
 
 
-class BaseForumIndex(Page, ForumPageMixin):
+class AbstractForumIndex(Page, ForumPageMixin):
     @property
     def search_url(self):
         return self.url + 'search/'
@@ -293,7 +293,7 @@ class BaseForumIndex(Page, ForumPageMixin):
             if path_components == ['search']:
                 return RouteResult(self, kwargs=dict(action='search'))
 
-        return super(BaseForumIndex, self).route(request, path_components)
+        return super(AbstractForumIndex, self).route(request, path_components)
 
     def search_view(self, request):
         if 'q' in request.GET:
