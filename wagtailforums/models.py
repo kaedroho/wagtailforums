@@ -3,22 +3,28 @@ import os
 from django.db import models
 from django.shortcuts import render, redirect
 from django.conf import settings
+from django.conf.urls import url
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import PermissionDenied
 from django.utils.text import slugify
 from django import forms
 
 from wagtail.wagtailcore.models import Page
-from wagtail.wagtailcore.url_routing import RouteResult
 from wagtail.wagtailadmin.edit_handlers import FieldPanel
+from wagtail.contrib.wagtailroutablepage.models import RoutablePageMixin
 
 
-class ForumPageMixin(models.Model):
+class ForumPageMixin(RoutablePageMixin):
+    subpage_urls = (
+        url(r'^$', 'main_view', name='main'),
+        url(r'^new_post/$', 'new_post_view', name='new_post'),
+    )
+
     post_model = None
 
     @property
     def new_post_url(self):
-        return self.url + 'new_post/'
+        return self.url + self.reverse_subpage('new_post')
 
     def user_can_create_post(self, user):
         # If theres no post model, no posts can be created
@@ -98,9 +104,14 @@ class ForumPageMixin(models.Model):
         abstract = True
 
 
-class AbstractForumPost(Page, ForumPageMixin):
+class AbstractForumPost(ForumPageMixin, Page):
     message = models.TextField()
     post_number = models.PositiveIntegerField(editable=False, null=True)
+
+    subpage_urls = ForumPageMixin.subpage_urls + (
+        url(r'^edit/$', 'edit_view', name='edit'),
+        url(r'^delete/$', 'delete_view', name='delete'),
+    )
 
     form_fields = ('message', )
 
@@ -117,11 +128,11 @@ class AbstractForumPost(Page, ForumPageMixin):
 
     @property
     def edit_url(self):
-        return self.url + 'edit/'
+        return self.url + self.reverse_subpage('edit')
 
     @property
     def delete_url(self):
-        return self.url + 'delete/'
+        return self.url + self.reverse_subpage('delete')
 
     def user_can_edit(self, user):
         # Check if the user has permission to do this in wagtail
@@ -176,19 +187,6 @@ class AbstractForumPost(Page, ForumPageMixin):
         else:
             return str(self.post_number)
 
-    def route(self, request, path_components):
-        if self.live:
-            if path_components == ['new_post']:
-                return RouteResult(self, kwargs=dict(action='new_post'))
-
-            if path_components == ['edit']:
-                return RouteResult(self, kwargs=dict(action='edit'))
-
-            if path_components == ['delete']:
-                return RouteResult(self, kwargs=dict(action='delete'))
-
-        return super(AbstractForumPost, self).route(request, path_components)
-
     def get_context(self, request):
         context = super(AbstractForumPost, self).get_context(request)
         context['user_can_edit'] = self.user_can_edit(request.user)
@@ -233,21 +231,6 @@ class AbstractForumPost(Page, ForumPageMixin):
         else:
             return render(request, get_template_name(self.template, 'delete'), self.get_context(request))
 
-    def serve(self, request, action='view'):
-        if action == 'view':
-            return self.main_view(request)
-
-        if action == 'new_post':
-            return self.new_post_view(request)
-
-        if action == 'edit':
-            return self.edit_view(request)
-
-        if action == 'delete':
-            return self.delete_view(request)
-
-        return super(AbstractForumPost, self).serve(request)
-
     is_abstract = True
 
     class Meta:
@@ -280,20 +263,14 @@ class AbstractForumTopic(AbstractForumPost):
         abstract = True
 
 
-class AbstractForumIndex(Page, ForumPageMixin):
+class AbstractForumIndex(ForumPageMixin, Page):
+    subpage_urls = ForumPageMixin.subpage_urls + (
+        url(r'^search/$', 'search_view', name='search'),
+    )
+
     @property
     def search_url(self):
-        return self.url + 'search/'
-
-    def route(self, request, path_components):
-        if self.live:
-            if path_components == ['new_post']:
-                return RouteResult(self, kwargs=dict(action='new_post'))
-
-            if path_components == ['search']:
-                return RouteResult(self, kwargs=dict(action='search'))
-
-        return super(AbstractForumIndex, self).route(request, path_components)
+        return self.url + self.reverse_subpage('search')
 
     def search_view(self, request):
         if 'q' in request.GET:
@@ -307,16 +284,6 @@ class AbstractForumIndex(Page, ForumPageMixin):
             'query_string': query_string,
             'search_results': search_results,
         })
-
-    def serve(self, request, action='view'):
-        if action == 'view':
-            return self.main_view(request)
-
-        if action == 'new_post':
-            return self.new_post_view(request)
-
-        if action == 'search':
-            return self.search_view(request)
 
     is_abstract = True
 
