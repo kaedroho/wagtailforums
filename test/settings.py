@@ -59,7 +59,6 @@ INSTALLED_APPS = [
     'django.contrib.admin',
 
     'taggit',
-    'south',
     'compressor',
 
     'wagtail.wagtailcore',
