@@ -10,6 +10,7 @@ from django.utils.text import slugify
 from django import forms
 
 from wagtail.wagtailcore.models import Page
+from wagtail.wagtailcore.utils import resolve_model_string
 from wagtail.wagtailadmin.edit_handlers import FieldPanel
 from wagtail.contrib.wagtailroutablepage.models import RoutablePageMixin
 
@@ -22,13 +23,20 @@ class ForumPageMixin(RoutablePageMixin):
 
     post_model = None
 
+    @classmethod
+    def get_post_model(cls):
+        if not cls.post_model:
+            return
+
+        return resolve_model_string(cls.post_model)
+
     @property
     def new_post_url(self):
         return self.url + self.reverse_subpage('new_post')
 
     def user_can_create_post(self, user):
         # If theres no post model, no posts can be created
-        if not self.post_model:
+        if not self.get_post_model():
             return False
 
         # Make sure the user is active
@@ -53,7 +61,7 @@ class ForumPageMixin(RoutablePageMixin):
         return True
 
     def get_next_post_number(self):
-        children = self.post_model.objects.child_of(self)
+        children = self.get_post_model().objects.child_of(self)
 
         return (children.aggregate(models.Max('post_number'))['post_number__max'] or 0) + 1
 
@@ -64,7 +72,7 @@ class ForumPageMixin(RoutablePageMixin):
         if not self.user_can_create_post(request.user):
             raise PermissionDenied
 
-        form = self.post_model.get_form_class()(request.POST or None, request.FILES or None)
+        form = self.get_post_model().get_form_class()(request.POST or None, request.FILES or None)
 
         if form.is_valid():
             publishing = self.user_can_publish_post(request.user)
@@ -92,7 +100,7 @@ class ForumPageMixin(RoutablePageMixin):
             return render(request, get_template_name(self.template, 'new_post'), context)
 
     def main_view(self, request):
-        form = self.post_model.get_form_class()(request.POST or None, request.FILES or None)
+        form = self.get_post_model().get_form_class()(request.POST or None, request.FILES or None)
 
         context = self.get_context(request)
         context['post_form'] = form
@@ -275,10 +283,10 @@ class AbstractForumIndex(ForumPageMixin, Page):
     def search_view(self, request):
         if 'q' in request.GET:
             query_string = request.GET['q']
-            search_results = self.post_model.objects.live().descendant_of(self).search(query_string)
+            search_results = self.get_post_model().objects.live().descendant_of(self).search(query_string)
         else:
             query_string = None
-            search_results = self.post_model.objects.none()
+            search_results = self.get_post_model().objects.none()
 
         return render(request, get_template_name(self.template, 'search'), {
             'query_string': query_string,
