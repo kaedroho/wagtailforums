@@ -12,14 +12,10 @@ from django import forms
 from wagtail.wagtailcore.models import Page
 from wagtail.wagtailcore.utils import resolve_model_string
 from wagtail.wagtailadmin.edit_handlers import FieldPanel
-from wagtail.contrib.wagtailroutablepage.models import RoutablePageMixin
+from wagtail.contrib.wagtailroutablepage.models import RoutablePageMixin, route
 
 
 class ForumPageMixin(RoutablePageMixin):
-    subpage_urls = (
-        url(r'^$', 'main_view', name='main'),
-        url(r'^new_post/$', 'new_post_view', name='new_post'),
-    )
 
     post_model = None
 
@@ -68,6 +64,7 @@ class ForumPageMixin(RoutablePageMixin):
     def get_create_post_redirect_url(self, post):
         return post.url
 
+    @route(r'^new_post/$', name='new_post')
     def new_post_view(self, request):
         if not self.user_can_create_post(request.user):
             raise PermissionDenied
@@ -99,6 +96,7 @@ class ForumPageMixin(RoutablePageMixin):
             context['user_can_publish_post'] = self.user_can_publish_post(request.user)
             return render(request, get_template_name(self.template, 'new_post'), context)
 
+    @route(r'^$', name='main')
     def main_view(self, request):
         form = self.get_post_model().get_form_class()(request.POST or None, request.FILES or None)
 
@@ -115,11 +113,6 @@ class ForumPageMixin(RoutablePageMixin):
 class AbstractForumPost(ForumPageMixin, Page):
     message = models.TextField()
     post_number = models.PositiveIntegerField(editable=False, null=True)
-
-    subpage_urls = ForumPageMixin.subpage_urls + (
-        url(r'^edit/$', 'edit_view', name='edit'),
-        url(r'^delete/$', 'delete_view', name='delete'),
-    )
 
     form_fields = ('message', )
 
@@ -204,6 +197,7 @@ class AbstractForumPost(ForumPageMixin, Page):
     def get_edit_redirect_url(self):
         return self.url
 
+    @route(r'^edit/$', name='edit')
     def edit_view(self, request):
         if not self.user_can_edit(request.user):
             if request.method == 'POST':
@@ -226,6 +220,7 @@ class AbstractForumPost(ForumPageMixin, Page):
     def get_delete_redirect_url(self):
         return self.get_parent().url
 
+    @route(r'^delete/$', name='delete')
     def delete_view(self, request):
         if not self.user_can_delete(request.user):
             if request.method == 'POST':
@@ -272,14 +267,12 @@ class AbstractForumTopic(AbstractForumPost):
 
 
 class AbstractForumIndex(ForumPageMixin, Page):
-    subpage_urls = ForumPageMixin.subpage_urls + (
-        url(r'^search/$', 'search_view', name='search'),
-    )
 
     @property
     def search_url(self):
         return self.url + self.reverse_subpage('search')
 
+    @route(r'^search/$', name='search')
     def search_view(self, request):
         if 'q' in request.GET:
             query_string = request.GET['q']
