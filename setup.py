@@ -30,7 +30,7 @@ setup(
     packages=['wagtailforums'],
     include_package_data=True,
     license='BSD',
-    long_description=open('README.rst').read(),
+    long_description=open('README.md').read(),
     classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Web Environment',
