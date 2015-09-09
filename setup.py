@@ -49,8 +49,8 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Site Management',
     ],
     install_requires=[
-        'Django>=1.6.2,<1.8',
-        'wagtail>=0.6,<0.9',
+        'Django>=1.7,<1.8',
+        'wagtail>=1.0,<1.1',
     ],
     zip_safe=False,
 )
