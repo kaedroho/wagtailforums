@@ -1,2 +1,6 @@
 *.pyc
 /docs/_build/
+/venv/
+/build/
+/dist/
+/wagtailforums.egg-info/
